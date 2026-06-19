@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="운동 다이어리">
+  <title>디디의 운동 다이어리</title>
+  <style>
+    :root{--bg:#f2f2f7;--card:#fff;--text:#1c1c1e;--muted:#6e6e73;--b:rgba(0,0,0,0.12);--b2:rgba(0,0,0,0.22)}
+    @media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--text:#f2f2f7;--muted:#8e8e93;--b:rgba(255,255,255,0.12);--b2:rgba(255,255,255,0.22)}}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:2rem}
+    button{font-family:inherit;cursor:pointer;border-radius:8px}
+    button:active{opacity:.65}
+    input{font-family:inherit;background:var(--bg);border:.5px solid var(--b2);border-radius:8px;color:var(--text);padding:9px 10px;font-size:14px;width:100%;outline:none}
+    input::placeholder{color:var(--muted)}
+    input:focus{border-color:#7268CC}
+    .card{background:var(--card);border:.5px solid var(--b);border-radius:12px;padding:11px 13px;margin-bottom:8px}
+    .lbl{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:12px 0 8px}
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+</head>
+<body><div id="app"></div>
+<script>
+const SK='didi_workout_v8';
+const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const td=()=>fmt(new Date());
+const pl=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const ad=(s,n)=>{const d=pl(s);d.setDate(d.getDate()+n);return fmt(d)};
+const gw=s=>{const d=pl(s),off=d.getDay()===0?-6:-(d.getDay()-1);return Array.from({length:7},(_,i)=>ad(fmt(d),off+i))};
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const r2=(n,step)=>step>0?Math.round(n/step)*step:n;
+
+const DK=['월','화','수','목','금','토','일'];
+const MC={'카디오':{dot:'#378ADD',lb:'카디오'},'하체':{dot:'#4F9A2A',lb:'하체'},'상체푸시':{dot:'#C4476A',lb:'상체 푸시'},'상체풀':{dot:'#7268CC',lb:'상체 풀'},'코어':{dot:'#B5830A',lb:'코어'},'그룹PT':{dot:'#CC5A2E',lb:'그룹PT'}};
+
+// ── 유산소 필드 ─────────────────────────────────────────
+const CF={'러닝':[{id:'dist',lb:'거리',unit:'km',ph:'5.2'},{id:'pace',lb:'페이스',unit:'/km',ph:'5:30'},{id:'time',lb:'총 시간',unit:'',ph:'32:00'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'수영':[{id:'dist',lb:'거리',unit:'m',ph:'1000'},{id:'time',lb:'시간',unit:'',ph:'35:00'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'수영(개인)':[{id:'dist',lb:'거리',unit:'m',ph:'1000'},{id:'time',lb:'시간',unit:'',ph:'35:00'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'천국의계단':[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'level',lb:'레벨',unit:'',ph:'8'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'일립티컬':[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'level',lb:'레벨',unit:'',ph:'10'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'바이크':[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'dist',lb:'거리',unit:'km',ph:'선택'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'로잉머신':[{id:'dist',lb:'거리',unit:'m',ph:'2000'},{id:'time',lb:'총 시간',unit:'',ph:'7:45'},{id:'split',lb:'500m 스플릿',unit:'/500m',ph:'1:58'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'스키머신':[{id:'time',lb:'시간',unit:'분',ph:'10'},{id:'dist',lb:'거리',unit:'m',ph:'2000'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'무동력트레드밀':[{id:'time',lb:'시간',unit:'분',ph:'15'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'무동력자전거':[{id:'time',lb:'시간',unit:'분',ph:'10'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}]};
+function cardioSummary(name,c){if(!c||!Object.keys(c).some(k=>c[k]))return'';const flds=CF[name]||[{id:'time',lb:'시간',unit:'분'}];return flds.map(f=>{const v=c[f.id];if(!v||!v.trim())return null;if(f.id==='hr')return'♥'+v+'bpm';if(f.id==='level')return'Lv.'+v;return v+(f.unit||'');}).filter(Boolean).join(' · ');}
+
+const EDB={'카디오':['러닝','수영','수영(개인)','천국의계단','일립티컬','바이크','로잉머신','스키머신','무동력트레드밀','무동력자전거'],'하체':['바벨스쿼트','데드리프트','루마니안데드리프트','불가리안스플릿스쿼트','힙쓰러스트','레그프레스','라잉레그컬','힙어덕션','고블렛스쿼트','런지'],'상체푸시':['벤치프레스','인클라인프레스','오버헤드프레스','숄더프레스','푸시업','딥스','체스트프레스'],'상체풀':['렛풀다운','벤트오버로우','친업','어시스트친업','롱풀','덤벨로우','리어델트플라이','페이스풀','케틀벨헤일로'],'코어':['중량싯업','행잉레그레이즈','플랭크','케이블우드찹','사이드플랭크','케틀벨스윙','터키시겟업'],'그룹PT':['그룹PT']};
+
+// ── 주기화 스킴 ─────────────────────────────────────────
+const SCHEMES=[{s:5,r:5,lb:'5×5',tag:'근력',col:'#C4476A'},{s:4,r:6,lb:'4×6',tag:'근력-비대',col:'#7268CC'},{s:3,r:8,lb:'3×8',tag:'근비대',col:'#4F9A2A'},{s:3,r:5,lb:'3×5',tag:'디로드',col:'#B5830A',deload:true}];
+function liftScheme(l){const b=Math.floor(l.sess/3)%4;return SCHEMES[b===3?3:b];}
+
+// ── 메인 리프트 (상체 / 하체 분리) ─────────────────────
+const DEF_LIFTS={
+  bench:{name:'벤치프레스',        wgt:22.5,step:1.25,sess:0,split:'upper'},
+  ohp:  {name:'오버헤드프레스',    wgt:15.0,step:1.25,sess:0,split:'upper'},
+  row:  {name:'바벨로우',          wgt:30.0,step:2.5, sess:0,split:'upper'},
+  dl:   {name:'데드리프트',        wgt:72.5,step:2.5, sess:0,split:'lower'},
+  squat:{name:'바벨스쿼트',        wgt:42.5,step:2.5, sess:0,split:'lower'},
+  bss:  {name:'불가리안스플릿스쿼트',wgt:10.0,step:2.5,sess:0,split:'lower'},
+};
+
+// ── 상체 / 하체 세션 프로그램 ───────────────────────────
+// lifts: DEF_LIFTS 키 (점진 과부하 추적)
+// extras: 보조 복합동작 (텍스트, 당일 기록만)
+// acc: 마무리 보조 (텍스트)
+const PROGRAMS={
+  mnp:{
+    upper:[
+      // A: 수평 Push(벤치) + 수평 Pull(바벨로우)
+      {lifts:['bench','row'],  extras:['푸시업  2×15'],                          acc:['케이블우드찹 3×12','행잉레그레이즈 2×15']},
+      // B: 수직 Push(OHP) + 수직 Pull(친업)
+      {lifts:['ohp'],          extras:['어시스트친업  4×max렙'],                 acc:['케이블우드찹 3×12','중량싯업 2×20']},
+      // C: 인클라인 + 덤벨로우 (볼륨 위주)
+      {lifts:['bench'],        extras:['덤벨로우  3×10 each','딥스  2×max'],     acc:['사이드플랭크 3×45초']},
+    ],
+    lower:[
+      // A: 힙힌지 — 데드 + BSS (서로 다른 패턴, OK)
+      {lifts:['dl'],           extras:['불가리안스플릿스쿼트  3×10  (10kg)'],    acc:['케이블우드찹 3×12','케틀벨스윙 3×15']},
+      // B: 무릎굴곡 — 스쿼트 + 힙쓰러스트 (전면/후면 분리)
+      {lifts:['squat'],        extras:['힙쓰러스트  3×12  (바벨)'],              acc:['중량싯업 2×20']},
+      // C: 컨디셔닝 — BSS + RDL 가볍게 (회복 겸용)
+      {lifts:['bss'],          extras:['루마니안데드리프트  3×8  (가볍게)'],      acc:['케틀벨스윙 4×20','사이드플랭크 3×10']},
+    ],
+    full:[
+      ['그룹PT로 충분해요. 추가한다면 친업 또는 코어 1가지만'],
+      ['그룹PT 이후 10분: 어시스트친업 3×max + 케이블우드찹 3×12'],
+    ],
+    cardio:[
+      ['무동력트레드밀 10분','로잉머신 10분','스키머신 10분'],
+      ['무동력자전거 15분','로잉머신 10분','스키머신 5분'],
+    ],
+  },
+  apt:{
+    upper:[
+      {lifts:[],extras:['렛풀다운  4×10','시티드체스트프레스  4×10'],  acc:['숄더프레스 3×12','일립티컬 10분']},
+      {lifts:[],extras:['어시스트친업  3×max','시티드체스트프레스  3×12'],acc:['롱풀 3×12','천국의계단 10분']},
+    ],
+    lower:[
+      {lifts:[],extras:['시티드레그프레스  4×12','라잉레그컬  3×12'],   acc:['힙어덕션 3×15','천국의계단 15분']},
+      {lifts:[],extras:['레그프레스  4×10  (무겁게)','라잉레그컬  4×10'],acc:['힙어덕션 3×20','바이크 10분']},
+    ],
+    full:[['렛풀다운 3×10','레그프레스 3×12','천국의계단 10분']],
+    cardio:[['천국의계단 20분','일립티컬 15분'],['바이크 15분','천국의계단 15분']],
+  },
+}
+
+// 요일별 세션 타입 자동 제안
+const DOW_SUGGEST={1:'lower',2:'full',3:'cardio',4:'full',5:'upper',6:null,0:null};
+
+// ── 상태 ───────────────────────────────────────────────
+let S={sel:td(),logs:{},panel:null,sg:null,en:'',sts:'',wgt:'',cf:{},showSetup:false};
+try{const v=localStorage.getItem(SK);if(v){const p=JSON.parse(v);S.logs=p.logs||{};S.lifts=p.lifts||JSON.parse(JSON.stringify(DEF_LIFTS));}}catch(e){}
+if(!S.lifts)S.lifts=JSON.parse(JSON.stringify(DEF_LIFTS));
+const sv=()=>{try{localStorage.setItem(SK,JSON.stringify({logs:S.logs,lifts:S.lifts}))}catch(e){}}
+
+// ── 클라우드 동기화 (Firebase Realtime DB) ────────────
+const SK_FB='didi_firebase_v2';
+let FB={cfg:null,pin:''};
+try{const v=localStorage.getItem(SK_FB);if(v)FB=JSON.parse(v);}catch(e){}
+const svFB=()=>{try{localStorage.setItem(SK_FB,JSON.stringify(FB))}catch(e){}};
+
+let _db=null;
+let syncSt='idle';
+
+function cloudConfigured(){return!!(FB.cfg&&FB.pin);}
+
+function getDB(){
+  if(_db)return _db;
+  if(!FB.cfg||!FB.pin)return null;
+  try{
+    if(!firebase.apps.length)firebase.initializeApp(FB.cfg);
+    _db=firebase.database();
+    return _db;
+  }catch(e){return null;}
+}
+
+function dbPath(){return'workouts/'+FB.pin.replace(/[.#$\[\]]/g,'_');}
+
+async function cloudPull(){
+  const db=getDB();
+  if(!db){syncSt='noconf';render();return;}
+  syncSt='syncing';render();
+  try{
+    const snap=await db.ref(dbPath()).once('value');
+    const d=snap.val();
+    if(d){
+      if(d.logs)S.logs=d.logs;
+      if(d.lifts)S.lifts=d.lifts;
+      sv();
+    }
+    syncSt='ok';
+  }catch(e){syncSt='error';}
+  render();
+}
+
+async function cloudPush(){
+  const db=getDB();
+  if(!db)return;
+  try{
+    await db.ref(dbPath()).set({logs:S.logs,lifts:S.lifts});
+    syncSt='ok';
+  }catch(e){syncSt='error';}
+  render();
+}
+
+const svAndPush=()=>{sv();cloudPush();};
+const gd=d=>S.logs[d]||{swim:null,mnp:null,apt:null,exs:[],rating:null,liftsDone:{},sessType:null};
+
+// ── 프로그램 조회 ──────────────────────────────────────
+function getProgram(){
+  const day=gd(S.sel);
+  const gym=day.mnp?'mnp':day.apt?'apt':null;
+  const type=day.sessType||DOW_SUGGEST[pl(S.sel).getDay()];
+  if(!gym||!type)return null;
+  const progs=PROGRAMS[gym]?.[type];
+  if(!progs)return null;
+  if(type==='full'||type==='cardio'){
+    // 텍스트 로테이션만
+    const splitLifts=Object.values(S.lifts).filter(l=>l.split==='lower');
+    const n=splitLifts.length?splitLifts[0].sess:0;
+    return{type,items:progs[n%progs.length],lifts:[],extras:[],acc:[]};
+  }
+  const splitLifts=Object.values(S.lifts).filter(l=>l.split===(type==='upper'?'upper':'lower'));
+  const n=splitLifts.length?splitLifts[0].sess:0;
+  const prog=progs[n%progs.length];
+  return{type,...prog};
+}
+
+// ── 세션 평가 ──────────────────────────────────────────
+function rateSession(rating){
+  const day=gd(S.sel);
+  const done=day.liftsDone||{};
+  S.logs={...S.logs,[S.sel]:{...day,rating}};
+  Object.entries(S.lifts).forEach(([k,l])=>{
+    if(!done[k])return;
+    const sch=liftScheme(l);
+    if(!sch.deload){
+      if(rating==='easy')  l.wgt=r2(l.wgt+l.step*2,l.step);
+      else if(rating==='good') l.wgt=r2(l.wgt+l.step,l.step);
+      else if(rating==='max')  l.wgt=r2(l.wgt*0.9,l.step);
+    }
+    l.sess++;
+  });
+  sv();render();
+}
+function toggleLiftDone(k){const day=gd(S.sel),ld={...(day.liftsDone||{})};ld[k]=!ld[k];S.logs={...S.logs,[S.sel]:{...day,liftsDone:ld}};svAndPush();render();}
+function setSessType(t){const day=gd(S.sel);S.logs={...S.logs,[S.sel]:{...day,sessType:day.sessType===t?null:t}};svAndPush();render();}
+
+// ── 렌더 헬퍼 ─────────────────────────────────────────
+function dots(d){
+  const dd=S.logs[d]||{},mg=[...new Set((dd.exs||[]).map(e=>e.mg))].map(g=>(MC[g]||{}).dot).filter(Boolean),ex=[];
+  if(dd.swim===true)ex.push('#378ADD');if(dd.mnp===true)ex.push('#CC5A2E');if(dd.apt===true)ex.push('#4F9A2A');
+  return[...new Set([...ex,...mg])];
+}
+function pill(chk,key,lb,dot){
+  const on=chk===true,off=chk===false;
+  return`<button onclick="tog('${key}')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:13px;font-weight:500;border:.5px solid ${on?dot:off?'var(--b)':dot+'55'};background:${on?dot+'22':'transparent'};color:${on?dot:'var(--muted)'};text-decoration:${off?'line-through':'none'}">${on?'✓':off?'✕':'○'} ${lb}</button>`;
+}
+function stBtn(type,lb,col,cur){return`<button onclick="setSessType('${type}')" style="flex:1;padding:7px 4px;font-size:12px;font-weight:${cur===type?700:400};border:.5px solid ${cur===type?col:'var(--b2)'};background:${cur===type?col+'22':'transparent'};color:${cur===type?col:'var(--muted)'};border-radius:8px">${lb}</button>`;}
+function exRow(ex){
+  const dot=(MC[ex.mg]||{}).dot||'#999',lb=(MC[ex.mg]||{}).lb||ex.mg;
+  const detail=ex.cardio?cardioSummary(ex.name,ex.cardio):[ex.sets,ex.wgt].filter(Boolean).join(' · ');
+  return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:.5px solid var(--b)">
+    <div style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0"></div>
+    <div style="flex:1;min-width:0"><span style="font-size:14px;font-weight:500">${esc(ex.name)}</span>${detail?`<span style="font-size:12px;color:var(--muted);margin-left:6px">${esc(detail)}</span>`:''}</div>
+    <span style="font-size:11px;padding:2px 7px;border-radius:6px;border:.5px solid ${dot}55;color:${dot};background:${dot}18;font-weight:500;flex-shrink:0">${lb}</span>
+    <button onclick="del('${ex.id}')" style="font-size:16px;color:var(--muted);background:transparent;border:none;line-height:1;padding:0 2px;flex-shrink:0">×</button>
+  </div>`;
+}
+function cardioPanel(exName){
+  const fields=CF[exName]||[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}];
+  const rows=[];for(let i=0;i<fields.length;i+=2){const pair=fields.slice(i,i+2);rows.push(`<div style="display:flex;gap:6px">${pair.map(f=>`<div style="flex:1;margin-bottom:8px"><div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">${f.lb}${f.unit&&f.unit!=='bpm'?' ('+f.unit+')':''}</div><input id="cf_${f.id}" placeholder="${f.ph}" value="${esc(S.cf[f.id]||'')}" oninput="S.cf['${f.id}']=this.value"></div>`).join('')}</div>`);}
+  return rows.join('');
+}
+
+// ── 메인 렌더 ──────────────────────────────────────────
+function render(){
+  const TODAY=td(),week=gw(S.sel),dow=pl(S.sel).getDay(),day=gd(S.sel);
+  const morn=(day.exs||[]).filter(e=>e.sess==='morn'),eve=(day.exs||[]).filter(e=>e.sess==='eve');
+  const gymChecked=day.mnp===true||day.apt===true;
+  const prog=getProgram();
+  const sessType=day.sessType||DOW_SUGGEST[dow];
+  const hasAnyLog=(day.exs||[]).length>0;
+
+  // 주간 캘린더
+  const wk=week.map((d,i)=>{
+    const iS=d===S.sel,iT=d===TODAY,ds=dots(d),rated=(S.logs[d]||{}).rating;
+    const rDot=rated==='easy'?'#4F9A2A':rated==='good'?'#7268CC':rated==='hard'?'#B5830A':rated==='max'?'#C4476A':'';
+    return`<div onclick="go('${d}')" style="flex:1;border-radius:8px;padding:6px 2px;text-align:center;cursor:pointer;background:${iS?'#7268CC18':iT?'var(--bg)':'transparent'};border:.5px solid ${iS?'#7268CC':'transparent'}">
+      <div style="font-size:9px;font-weight:600;color:${iS?'#7268CC':'var(--muted)'}">${DK[i]}</div>
+      <div style="font-size:16px;font-weight:${iS||iT?700:400};color:${iS?'#534AB7':'var(--text)'};margin-top:1px">${pl(d).getDate()}</div>
+      <div style="display:flex;justify-content:center;gap:2px;margin-top:3px;min-height:5px">
+        ${ds.slice(0,3).map(c=>`<div style="width:4px;height:4px;border-radius:50%;background:${c}"></div>`).join('')}
+        ${rDot?`<div style="width:4px;height:4px;border-radius:50%;background:${rDot}"></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // 처방 카드
+  let prescHtml='';
+  if(gymChecked&&prog&&(prog.type==='upper'||prog.type==='lower')){
+    const liftRows=(prog.lifts||[]).map(k=>{
+      const l=S.lifts[k];if(!l)return'';
+      const sch=liftScheme(l);
+      const wgt=sch.deload?r2(l.wgt*0.7,l.step):l.wgt;
+      const done=(day.liftsDone||{})[k]===true;
+      return`<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-top:.5px solid var(--b)">
+        <div style="flex:1">
+          <span style="font-size:14px;font-weight:500;color:${done?'var(--text)':'var(--muted)'}">${l.name}</span>
+          <span style="font-size:11px;padding:1px 6px;border-radius:5px;background:${sch.col}20;color:${sch.col};font-weight:600;margin-left:5px">${sch.lb}</span>
+        </div>
+        <span style="font-size:14px;font-weight:700;color:${done?'var(--text)':'var(--muted)'}">${wgt}kg × ${sch.s}×${sch.r}</span>
+        <button onclick="adjLift('${k}',-1)" style="width:24px;height:24px;font-size:13px;border:.5px solid var(--b2);background:transparent;color:var(--muted);padding:0;line-height:1">−</button>
+        <button onclick="adjLift('${k}',1)"  style="width:24px;height:24px;font-size:13px;border:.5px solid var(--b2);background:transparent;color:var(--muted);padding:0;line-height:1">+</button>
+        <button onclick="toggleLiftDone('${k}')" style="padding:3px 8px;font-size:11px;font-weight:600;border-radius:20px;border:.5px solid ${done?'#4F9A2A':'var(--b2)'};background:${done?'#4F9A2A22':'transparent'};color:${done?'#4F9A2A':'var(--muted)'}">${done?'✓ 완료':'○ 완료'}</button>
+      </div>`;
+    }).join('');
+    const extraRows=(prog.extras||[]).map(e=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:.5px solid var(--b)"><span style="font-size:13px;color:var(--muted)">+</span><span style="font-size:13px">${esc(e)}</span></div>`).join('');
+    const accRows=(prog.acc||[]).map(e=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:3px"><div style="width:4px;height:4px;border-radius:50%;background:${prog.type==='upper'?'#C4476A':'#4F9A2A'};flex-shrink:0"></div>${esc(e)}</div>`).join('');
+    prescHtml=`
+      <div class="lbl">오늘의 처방 — ${prog.type==='upper'?'상체':'하체'}</div>
+      <div class="card">
+        ${liftRows||'<div style="font-size:13px;color:var(--muted);margin-bottom:6px">이 루틴은 고정 중량 없이 진행해요</div>'}
+        ${extraRows}
+        ${accRows?`<div style="margin-top:8px;padding-top:8px;border-top:.5px solid var(--b);font-size:11px;color:var(--muted);margin-bottom:5px">마무리 보조</div>${accRows}`:''}
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">완료 체크 종목만 세션 평가에 반영 · ±로 중량 수동 조절</div>
+      </div>`;
+  } else if(gymChecked&&prog&&(prog.type==='full'||prog.type==='cardio')){
+    const items=prog.items||[];
+    prescHtml=`
+      <div class="lbl">오늘의 추천 — ${prog.type==='full'?'전신/PT':'유산소'}</div>
+      <div class="card">${items.map(i=>`<div style="font-size:13px;padding:4px 0;border-top:.5px solid var(--b)">${esc(i)}</div>`).join('')}</div>`;
+  }
+
+  // 운동 기록
+  function sess(id,lb,items){
+    return`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${items.length?6:0}px">
+        <span style="font-size:14px;font-weight:500">${lb}</span>
+        <button onclick="op('${id}')" style="font-size:12px;padding:4px 12px;background:transparent;border:.5px solid var(--b2);color:var(--text)">${S.panel===id?'닫기':'+ 추가'}</button>
+      </div>
+      ${!items.length&&S.panel!==id?`<div style="font-size:13px;color:var(--muted);text-align:center;padding:3px 0">기록 없음</div>`:''}
+      ${items.map(exRow).join('')}
+    </div>`;
+  }
+
+  // 운동 추가 패널
+  let pnl='';
+  if(S.panel){
+    const st=[['morn','오전'],['eve','오후·저녁']].map(([s,l])=>`<button onclick="sp('${s}')" style="flex:1;padding:8px;font-size:12px;font-weight:${S.panel===s?700:400};background:${S.panel===s?'#7268CC20':'transparent'};color:${S.panel===s?'#7268CC':'var(--muted)'};border:.5px solid ${S.panel===s?'#7268CC':'var(--b2)'};border-radius:8px">${l}</button>`).join('');
+    const gbs=Object.keys(EDB).map(g=>{const dot=(MC[g]||{}).dot||'#999',iS=S.sg===g;return`<button onclick="sg('${g}')" style="padding:9px 6px;font-size:12px;font-weight:500;border:.5px solid ${iS?dot:'var(--b2)'};background:${iS?dot+'20':'transparent'};color:${iS?dot:'var(--muted)'};border-radius:8px;width:100%">${(MC[g]||{}).lb||g}</button>`;}).join('');
+    const ebs=S.sg?EDB[S.sg].map(ex=>{const dot=(MC[S.sg]||{}).dot||'#999',iS=S.en===ex;return`<button onclick="se(this.dataset.n)" data-n="${esc(ex)}" style="padding:6px 12px;font-size:13px;border-radius:20px;border:.5px solid ${iS?dot:'var(--b2)'};background:${iS?dot+'20':'transparent'};color:${iS?dot:'var(--text)'}">${esc(ex)}</button>`;}).join(''):'';
+    const isCardio=S.sg==='카디오',hasCardioFields=isCardio&&S.en&&CF[S.en];
+    const inputFields=hasCardioFields?`<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">유산소 기록</div>${cardioPanel(S.en)}`:`<div style="display:flex;gap:6px;margin-bottom:8px"><input id="_sts" placeholder="세트×렙 (예: 3×10)" value="${esc(S.sts)}" oninput="S.sts=this.value" style="flex:1"><input id="_wgt" placeholder="중량 (예: 40kg)" value="${esc(S.wgt)}" oninput="S.wgt=this.value" style="flex:1"></div>`;
+    pnl=`<div class="card" style="background:var(--bg);margin-bottom:12px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px">${S.panel==='morn'?'오전':'오후·저녁'} 운동 추가</div>
+      <div style="display:flex;gap:5px;margin-bottom:12px">${st}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">근육군</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px">${gbs}</div>
+      ${S.sg?`<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">운동 선택</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${ebs}</div>`:''}
+      <input id="_en" placeholder="직접 입력..." value="${esc(S.en)}" oninput="S.en=this.value;S.cf={}" style="margin-bottom:8px">
+      ${S.en||S.sg?inputFields:''}
+      <button onclick="save()" style="width:100%;padding:13px;border-radius:10px;background:#7268CC;color:#fff;font-size:15px;font-weight:700;border:none;margin-top:4px">저장</button>
+    </div>`;
+  }
+
+  // 세션 평가
+  const RATE=[['easy','😊 가벼웠어','#4F9A2A'],['good','💪 딱 좋았어','#7268CC'],['hard','😰 힘들었어','#B5830A'],['max','🔥 너무 힘들었어','#C4476A']];
+  const done=day.liftsDone||{},doneName=Object.entries(done).filter(([,v])=>v).map(([k])=>S.lifts[k]?.name).filter(Boolean).join(', ');
+  const nextMsg=r=>r==='easy'?'각 종목 +2스텝':r==='good'?'각 종목 +1스텝':r==='hard'?'동일 중량':'-10% 리셋';
+  const ratingHtml=hasAnyLog?`
+    <div class="lbl">세션 평가</div>
+    <div class="card">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px">${day.rating?`평가 완료: <strong style="color:${RATE.find(r=>r[0]===day.rating)?.[2]}">${RATE.find(r=>r[0]===day.rating)?.[1]}</strong> → ${nextMsg(day.rating)}${doneName?' ('+doneName+')':''}`:doneName?`완료 종목: ${doneName} — 평가하면 다음 처방 업데이트`:'메인 리프트 완료 체크 후 평가 → 다음 세션 처방 자동 업데이트'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${RATE.map(([id,lb,col])=>`<button onclick="rate('${id}')" style="padding:10px 6px;font-size:12px;font-weight:600;border:.5px solid ${day.rating===id?col:'var(--b2)'};background:${day.rating===id?col+'22':'transparent'};color:${day.rating===id?col:'var(--text)'};border-radius:10px">${lb}</button>`).join('')}
+      </div>
+    </div>`:'';
+
+  // 설정 패널
+  const sch_up=liftScheme(Object.values(S.lifts).find(l=>l.split==='upper')||{sess:0});
+  const sch_lo=liftScheme(Object.values(S.lifts).find(l=>l.split==='lower')||{sess:0});
+  const setupHtml=S.showSetup?`
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;display:flex;align-items:flex-end" onclick="if(event.target===this)closeSetup()">
+      <div style="background:var(--card);width:100%;border-radius:20px 20px 0 0;padding:20px 16px 40px;max-height:85vh;overflow-y:auto">
+        <div style="font-size:16px;font-weight:700;margin-bottom:16px">처방 중량 설정</div>
+        <div style="font-size:12px;font-weight:700;color:#C4476A;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">상체 (${sch_up.lb} ${sch_up.tag})</div>
+        ${Object.entries(S.lifts).filter(([,l])=>l.split==='upper').map(([k,l])=>`<div style="margin-bottom:12px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">${l.name}</div><div style="display:flex;align-items:center;gap:8px"><button onclick="adjLift('${k}',-4)" style="padding:8px 12px;border:.5px solid var(--b2);background:transparent;color:var(--text)">−${l.step*2}kg</button><span style="flex:1;text-align:center;font-size:18px;font-weight:700">${l.wgt}kg</span><button onclick="adjLift('${k}',4)" style="padding:8px 12px;border:.5px solid var(--b2);background:transparent;color:var(--text)">+${l.step*2}kg</button></div></div>`).join('')}
+        <div style="font-size:12px;font-weight:700;color:#4F9A2A;letter-spacing:.08em;text-transform:uppercase;margin:16px 0 10px;padding-top:16px;border-top:.5px solid var(--b)">하체 (${sch_lo.lb} ${sch_lo.tag})</div>
+        ${Object.entries(S.lifts).filter(([,l])=>l.split==='lower').map(([k,l])=>`<div style="margin-bottom:12px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">${l.name}</div><div style="display:flex;align-items:center;gap:8px"><button onclick="adjLift('${k}',-4)" style="padding:8px 12px;border:.5px solid var(--b2);background:transparent;color:var(--text)">−${l.step*2}kg</button><span style="flex:1;text-align:center;font-size:18px;font-weight:700">${l.wgt}kg</span><button onclick="adjLift('${k}',4)" style="padding:8px 12px;border:.5px solid var(--b2);background:transparent;color:var(--text)">+${l.step*2}kg</button></div></div>`).join('')}
+        <div style="margin-top:20px;padding-top:16px;border-top:.5px solid var(--b)">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">☁ Firebase 동기화</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+            처음 한 번만 설정하면 폰/컴 자동 연동<br>
+            1. <a href="https://console.firebase.google.com" target="_blank" style="color:#378ADD">Firebase 콘솔</a> → 프로젝트 만들기 (무료)<br>
+            2. 프로젝트 → Realtime Database 활성화<br>
+            3. Rules 탭 → <code style="background:var(--bg);padding:1px 4px;border-radius:4px">".read":true, ".write":true</code> 로 변경 후 게시<br>
+            4. 프로젝트 설정 → 내 앱 → 웹앱 추가 → <strong>firebaseConfig 객체</strong> 복사<br>
+            5. 아래에 붙여넣기
+          </div>
+          <div style="margin-bottom:8px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Firebase Config (JSON)</div>
+            <textarea id="fb_cfg" rows="5" placeholder='{"apiKey":"...","databaseURL":"..."}' oninput="try{FB.cfg=JSON.parse(this.value)}catch(e){}" style="width:100%;background:var(--bg);border:.5px solid var(--b2);border-radius:8px;color:var(--text);padding:9px;font-size:12px;font-family:monospace;resize:none;outline:none">${esc(FB.cfg?JSON.stringify(FB.cfg,null,2):'')}</textarea>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">나만의 PIN (4자리 이상)</div>
+            <input id="fb_pin" type="password" placeholder="PIN 설정..." value="${esc(FB.pin)}" oninput="FB.pin=this.value">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">모든 기기에서 같은 PIN을 써야 해요</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="_db=null;svFB();cloudPush().then(()=>alert('업로드 완료! 다른 기기에서도 같은 Config+PIN 입력 후 다운로드하세요.'))" style="flex:1;padding:10px;border:.5px solid #378ADD;background:#378ADD22;color:#378ADD;font-size:13px;font-weight:600">저장 + 업로드</button>
+            <button onclick="_db=null;svFB();cloudPull()" style="flex:1;padding:10px;border:.5px solid #4F9A2A;background:#4F9A2A22;color:#4F9A2A;font-size:13px;font-weight:600">저장 + 다운로드</button>
+          </div>
+        </div>
+        <button onclick="closeSetup()" style="width:100%;padding:13px;border-radius:10px;background:#7268CC;color:#fff;font-size:15px;font-weight:700;border:none;margin-top:16px">닫기</button>
+      </div>
+    </div>`:'';
+
+  document.getElementById('app').innerHTML=`
+    ${setupHtml}
+    <div style="background:var(--card);padding:1rem 1rem .75rem;border-bottom:.5px solid var(--b);display:flex;align-items:flex-start;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px">Workout Diary</div>
+        <div style="font-size:21px;font-weight:700">디디의 기록</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:3px">${S.sel} · ${['일','월','화','수','목','금','토'][dow]}요일</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:4px">
+      <button onclick="cloudPull()" style="padding:5px 10px;font-size:12px;border:.5px solid var(--b2);background:transparent;color:${syncSt==='ok'?'#4F9A2A':syncSt==='error'?'#C4476A':syncSt==='syncing'?'#378ADD':'var(--muted)'}" title="클라우드에서 가져오기">${syncSt==='syncing'?'⟳ 동기화중':syncSt==='ok'?'☁ 동기화됨':syncSt==='error'?'☁ 오류':'☁ 동기화'}</button>
+      <button onclick="openSetup()" style="padding:5px 10px;font-size:12px;border:.5px solid var(--b2);background:transparent;color:var(--muted)">⚙</button>
+    </div>
+    </div>
+    <div style="display:flex;align-items:stretch;padding:6px;gap:2px;background:var(--card);border-bottom:.5px solid var(--b)">
+      <button onclick="pw()" style="background:transparent;border:none;padding:0 8px;color:var(--muted);font-size:22px">‹</button>
+      <div style="flex:1;display:flex;gap:2px">${wk}</div>
+      <button onclick="nw()" style="background:transparent;border:none;padding:0 8px;color:var(--muted);font-size:22px">›</button>
+    </div>
+    <div style="padding:.75rem .875rem 0">
+      <div class="lbl" style="margin-top:0">스케줄 체크</div>
+      <div class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${pill(day.swim,'swim','수영 강습','#378ADD')}</div>
+        <div style="border-top:.5px solid var(--b);padding-top:8px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">운동 장소</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">${pill(day.mnp,'mnp','무브앤플레이','#CC5A2E')}${pill(day.apt,'apt','아파트 헬스장','#4F9A2A')}</div>
+        </div>
+        ${gymChecked?`<div style="border-top:.5px solid var(--b);padding-top:8px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">세션 타입${DOW_SUGGEST[dow]?` · 오늘 제안: ${DOW_SUGGEST[dow]==='upper'?'상체':DOW_SUGGEST[dow]==='lower'?'하체':DOW_SUGGEST[dow]==='full'?'전신/PT':'유산소'}`:''}</div>
+          <div style="display:flex;gap:5px">
+            ${stBtn('upper','💪 상체','#C4476A',sessType)}
+            ${stBtn('lower','🏋 하체','#4F9A2A',sessType)}
+            ${stBtn('full','🔄 전신/PT','#CC5A2E',sessType)}
+            ${stBtn('cardio','🏃 유산소','#378ADD',sessType)}
+          </div>
+        </div>`:''}
+      </div>
+      ${prescHtml}
+      <div class="lbl">운동 기록</div>
+      ${sess('morn','오전',morn)}
+      ${sess('eve','오후·저녁',eve)}
+      ${pnl}
+      ${ratingHtml}
+    </div>`;
+}
+
+// ── 액션 ──────────────────────────────────────────────
+function go(d){S.sel=d;S.panel=null;S.sg=null;S.en='';S.sts='';S.wgt='';S.cf={};render()}
+function pw(){const w=gw(S.sel);go(ad(w[0],-7))}
+function nw(){const w=gw(S.sel);go(ad(w[0],7))}
+function tog(k){const d=gd(S.sel),c=d[k],n=c===true?false:c===false?null:true;const nd={...d,[k]:n};if(k==='mnp'&&n===true)nd.apt=null;if(k==='apt'&&n===true)nd.mnp=null;S.logs={...S.logs,[S.sel]:nd};sv();render();}
+function op(s){S.panel=S.panel===s?null:s;if(S.panel){S.sg=null;S.en='';S.sts='';S.wgt='';S.cf={};}render()}
+function sp(s){S.panel=s;render()}
+function sg(g){S.sg=g;S.en='';S.cf={};render()}
+function se(n){S.en=n;S.cf={};render()}
+function save(){
+  const nm=S.en.trim();if(!nm)return;
+  const isCardio=S.sg==='카디오',hasC=isCardio&&S.en&&CF[S.en];
+  const e={id:Date.now().toString(),name:nm,mg:S.sg||'카디오',sess:S.panel,...(hasC?{cardio:{...S.cf}}:{sets:S.sts.trim(),wgt:S.wgt.trim()})};
+  const d=gd(S.sel);S.logs={...S.logs,[S.sel]:{...d,exs:[...(d.exs||[]),e]}};
+  S.panel=null;S.sg=null;S.en='';S.sts='';S.wgt='';S.cf={};sv();render();
+}
+function del(id){const d=gd(S.sel);S.logs={...S.logs,[S.sel]:{...d,exs:(d.exs||[]).filter(e=>e.id!==id)}};svAndPush();render()}
+function rate(r){rateSession(r)}
+function adjLift(k,dir){const l=S.lifts[k];if(!l)return;l.wgt=Math.max(l.step,r2(l.wgt+l.step*dir,l.step));sv();render()}
+function openSetup(){S.showSetup=true;render()}
+function closeSetup(){S.showSetup=false;render()}
+
+// 앱 시작 시 클라우드 자동 동기화
+if(cloudConfigured()){cloudPull();}else{render();}
+</script>
+</body>
+</html>
