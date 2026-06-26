@@ -144,7 +144,7 @@ const PROGRAMS={
 const DOW_SUGGEST={1:'lower',2:'full',3:'cardio',4:'full',5:'upper',6:null,0:null};
 
 // ── 상태 ───────────────────────────────────────────────
-let S={sel:td(),logs:{},panel:null,sg:null,en:'',st:'',rp:'',wgt:'',cf:{},showSetup:false,srch:''};
+let S={sel:td(),logs:{},panel:null,sg:null,en:'',st:'',rp:'',wgt:'',cf:{},showSetup:false,srch:'',view:'log'};
 try{const v=localStorage.getItem(SK);if(v){const p=JSON.parse(v);S.logs=p.logs||{};S.lifts=p.lifts||JSON.parse(JSON.stringify(DEF_LIFTS));}}catch(e){}
 if(!S.lifts)S.lifts=JSON.parse(JSON.stringify(DEF_LIFTS));
 const sv=()=>{try{localStorage.setItem(SK,JSON.stringify({logs:S.logs,lifts:S.lifts}))}catch(e){}}
@@ -200,7 +200,7 @@ async function cloudPush(){
 }
 
 const svAndPush=()=>{sv();cloudPush();};
-const gd=d=>S.logs[d]||{swim:null,mnp:null,apt:null,run:null,runLog:null,exs:[],rating:null,liftsDone:{},sessType:null};
+const gd=d=>S.logs[d]||{swim:null,mnp:null,apt:null,run:null,runLog:null,exs:[],rating:null,liftsDone:{},sessType:null,memo:''};
 
 function renderSearchResults(){
   const hist=getHistory(S.srch);
@@ -482,7 +482,28 @@ function render(){
       <div style="flex:1;display:flex;gap:2px">${wk}</div>
       <button onclick="nw()" style="background:transparent;border:none;padding:0 8px;color:var(--muted);font-size:22px">›</button>
     </div>
-    <div style="padding:.75rem .875rem 0">
+    <div style="display:flex;border-bottom:.5px solid var(--b);background:var(--card)">
+      <button onclick="setView('log')" style="flex:1;padding:10px;font-size:13px;background:transparent;border:none;border-bottom:2px solid ${S.view==='log'?'#7268CC':'transparent'};color:${S.view==='log'?'#7268CC':'var(--muted)'};font-weight:${S.view==='log'?700:400}">운동 기록</button>
+      <button onclick="setView('memos')" style="flex:1;padding:10px;font-size:13px;background:transparent;border:none;border-bottom:2px solid ${S.view==='memos'?'#7268CC':'transparent'};color:${S.view==='memos'?'#7268CC':'var(--muted)'};font-weight:${S.view==='memos'?700:400}">📝 코멘트 노트</button>
+    </div>
+    ${S.view==='memos'?`<div style="padding:.75rem .875rem 0">
+      <div class="lbl" style="margin-top:0">코멘트 노트 전체</div>
+      ${(()=>{
+        const entries=Object.entries(S.logs)
+          .filter(([,d])=>d.memo&&d.memo.trim())
+          .sort((a,b)=>b[0].localeCompare(a[0]));
+        if(!entries.length)return'<div class="card" style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">아직 코멘트가 없어요.<br>운동 기록 탭에서 날짜별로 작성하세요.</div>';
+        return entries.map(([date,day])=>{
+          const df=date.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1.$2.$3');
+          const dow=['일','월','화','수','목','금','토'][pl(date).getDay()];
+          return`<div class="card" onclick="go('${date}');setView('log')" style="cursor:pointer;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:5px">${df} ${dow}요일</div>
+            <div style="font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(day.memo)}</div>
+          </div>`;
+        }).join('');
+      })()}
+    </div>`:``}
+    ${S.view==='log'?`<div style="padding:.75rem .875rem 0">
       <div class="lbl" style="margin-top:0">운동 기록 검색</div>
       <div class="card" style="margin-bottom:12px">
         <input id="srch_input" placeholder="운동 이름 검색... (예: 스쿼트, 케틀벨스윙)" value="${esc(S.srch)}" oninput="onSrch(this)">
@@ -535,7 +556,12 @@ function render(){
       ${sess('eve','오후·저녁',eve)}
       ${pnl}
       ${ratingHtml}
-    </div>`;
+      <div class="lbl">코멘트</div>
+      <div class="card">
+        <textarea id="day_memo" placeholder="오늘 코치 피드백, 배운 것, 느낀 점..." oninput="saveMemo(this.value)" style="width:100%;min-height:80px;background:var(--bg);border:.5px solid var(--b2);border-radius:8px;color:var(--text);padding:9px 10px;font-size:14px;font-family:inherit;resize:vertical;outline:none;line-height:1.6">${esc(day.memo||'')}</textarea>
+      </div>
+    </div>`:``}
+`;
 }
 
 // ── 액션 ──────────────────────────────────────────────
@@ -553,6 +579,14 @@ function saveRun(){
   S.logs={...S.logs,[S.sel]:{...d,runLog:rl}};svAndPush();render();
 }
 function setRunRpe(rpe){const d=gd(S.sel);S.logs={...S.logs,[S.sel]:{...d,runLog:{...(d.runLog||{}),rpe}}};svAndPush();render();}
+function setView(v){S.view=v;render();}
+let _memoTimer=null;
+function saveMemo(text){
+  const d=gd(S.sel);
+  S.logs={...S.logs,[S.sel]:{...d,memo:text}};
+  clearTimeout(_memoTimer);
+  _memoTimer=setTimeout(svAndPush,1000);
+}
 function op(s){S.panel=S.panel===s?null:s;if(S.panel){S.sg=null;S.en='';S.st='';S.rp='';S.wgt='';S.cf={};}render()}
 function sp(s){S.panel=s;render()}
 function sg(g){S.sg=g;S.en='';S.cf={};render()}
