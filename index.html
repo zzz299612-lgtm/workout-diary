@@ -34,7 +34,7 @@ const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 const r2=(n,step)=>step>0?Math.round(n/step)*step:n;
 
 const DK=['월','화','수','목','금','토','일'];
-const MC={'카디오':{dot:'#378ADD',lb:'카디오'},'하체':{dot:'#4F9A2A',lb:'하체'},'상체푸시':{dot:'#C4476A',lb:'상체 푸시'},'상체풀':{dot:'#7268CC',lb:'상체 풀'},'코어':{dot:'#B5830A',lb:'코어'},'그룹PT':{dot:'#CC5A2E',lb:'그룹PT'}};
+const MC={'카디오':{dot:'#378ADD',lb:'카디오'},'하체':{dot:'#4F9A2A',lb:'하체'},'상체푸시':{dot:'#C4476A',lb:'상체 푸시'},'상체풀':{dot:'#7268CC',lb:'상체 풀'},'코어':{dot:'#B5830A',lb:'코어'},'케틀벨':{dot:'#7C3AED',lb:'케틀벨'},'그룹PT':{dot:'#CC5A2E',lb:'그룹PT'}};
 
 // ── 유산소 필드 ─────────────────────────────────────────
 const CF={'러닝':[{id:'dist',lb:'거리',unit:'km',ph:'5.2'},{id:'pace',lb:'페이스',unit:'/km',ph:'5:30'},{id:'time',lb:'총 시간',unit:'',ph:'32:00'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'수영':[{id:'dist',lb:'거리',unit:'m',ph:'1000'},{id:'time',lb:'시간',unit:'',ph:'35:00'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'수영(개인)':[{id:'dist',lb:'거리',unit:'m',ph:'1000'},{id:'time',lb:'시간',unit:'',ph:'35:00'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'천국의계단':[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'level',lb:'레벨',unit:'',ph:'8'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'일립티컬':[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'level',lb:'레벨',unit:'',ph:'10'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'바이크':[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'dist',lb:'거리',unit:'km',ph:'선택'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'로잉머신':[{id:'dist',lb:'거리',unit:'m',ph:'2000'},{id:'time',lb:'총 시간',unit:'',ph:'7:45'},{id:'split',lb:'500m 스플릿',unit:'/500m',ph:'1:58'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'스키머신':[{id:'time',lb:'시간',unit:'분',ph:'10'},{id:'dist',lb:'거리',unit:'m',ph:'2000'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'무동력트레드밀':[{id:'time',lb:'시간',unit:'분',ph:'15'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'무동력자전거':[{id:'time',lb:'시간',unit:'분',ph:'10'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}]};
@@ -63,41 +63,67 @@ const DEF_LIFTS={
 const PROGRAMS={
   mnp:{
     upper:[
-      // A: 수평 Push(벤치) + 수평 Pull(바벨로우)
-      {lifts:['bench','row'],  extras:['푸시업  2×15'],                          acc:['케이블우드찹 3×12','행잉레그레이즈 2×15']},
-      // B: 수직 Push(OHP) + 수직 Pull(친업)
-      {lifts:['ohp'],          extras:['어시스트친업  4×max렙'],                 acc:['케이블우드찹 3×12','중량싯업 2×20']},
-      // C: 인클라인 + 덤벨로우 (볼륨 위주)
-      {lifts:['bench'],        extras:['덤벨로우  3×10 each','딥스  2×max'],     acc:['사이드플랭크 3×45초']},
+      // A: 수평 Push+Pull — 벤치 + 바벨로우 + 풀업
+      { lifts:['bench','row'],
+        warmup:'매달리기 1분',
+        extras:['풀업 — 최대렙 3세트'],
+        acc:[] },
+      // B: 수직 Push+Pull — OHP + 친업 + 딥스
+      { lifts:['ohp'],
+        warmup:'매달리기 1분',
+        extras:['어시스트친업 — 최대렙 3세트', '딥스 — 최대렙 2세트'],
+        acc:[] },
+      // C: 볼륨 — 벤치 + 덤벨로우 + 시소프레스
+      { lifts:['bench'],
+        warmup:'헤일로 8kg 8회×2',
+        extras:['덤벨로우 3세트·10회 each', '시소프레스 3세트·20회'],
+        acc:[] },
     ],
     lower:[
-      // A: 힙힌지 — 데드 + BSS (서로 다른 패턴, OK)
-      {lifts:['dl'],           extras:['불가리안스플릿스쿼트  3×10  (10kg)'],    acc:['케이블우드찹 3×12','케틀벨스윙 3×15']},
-      // B: 무릎굴곡 — 스쿼트 + 힙쓰러스트 (전면/후면 분리)
-      {lifts:['squat'],        extras:['힙쓰러스트  3×12  (바벨)'],              acc:['중량싯업 2×20']},
-      // C: 컨디셔닝 — BSS + RDL 가볍게 (회복 겸용)
-      {lifts:['bss'],          extras:['루마니안데드리프트  3×8  (가볍게)'],      acc:['케틀벨스윙 4×20','사이드플랭크 3×10']},
+      // A: 스쿼트 중심 + 케틀벨 컨디셔닝
+      { lifts:['squat'],
+        warmup:'헤일로 8kg 8회×2 → 고블렛스쿼트 16kg 10회×3',
+        extras:['스플릿스쿼트 4세트·10회 each (5kg 양손)'],
+        acc:['한손스윙 5분 100개 (16kg)', '중량싯업 100개'] },
+      // B: 데드 중심 + BSS
+      { lifts:['dl'],
+        warmup:'헤일로 8kg 8회×2 → 고블렛스쿼트 16kg 10회×3',
+        extras:['불가리안스플릿스쿼트 3세트·8회 each (10kg)'],
+        acc:['터키시겟업 10개 (12kg)'] },
+      // C: BSS 메인 + 루마니안데드 가볍게
+      { lifts:['bss'],
+        warmup:'헤일로 8kg 8회×2 → 고블렛스쿼트 16kg 10회×3',
+        extras:['루마니안데드리프트 4세트·10회 (가볍게)'],
+        acc:['중량싯업 50개'] },
     ],
     full:[
-      ['그룹PT로 충분해요. 추가한다면 친업 또는 코어 1가지만'],
-      ['그룹PT 이후 10분: 어시스트친업 3×max + 케이블우드찹 3×12'],
+      ['그룹PT로 충분. 추가한다면 풀업 1가지만'],
+      ['그룹PT 이후 — 풀업 2세트 최대렙 + 중량싯업 50개'],
     ],
     cardio:[
-      ['무동력트레드밀 10분','로잉머신 10분','스키머신 10분'],
-      ['무동력자전거 15분','로잉머신 10분','스키머신 5분'],
+      ['케틀벨스윙 24kg — 10개×15세트 (유산소 루틴)'],
+      ['한손스윙 5분 100개 (16kg) → 무동력자전거 20분'],
     ],
   },
   apt:{
     upper:[
-      {lifts:[],extras:['렛풀다운  4×10','시티드체스트프레스  4×10'],  acc:['숄더프레스 3×12','일립티컬 10분']},
-      {lifts:[],extras:['어시스트친업  3×max','시티드체스트프레스  3×12'],acc:['롱풀 3×12','천국의계단 10분']},
+      { lifts:[], warmup:'',
+        extras:['렛풀다운 3세트·10회', '시티드체스트프레스 3세트·10회'],
+        acc:['숄더프레스 2세트·12회'] },
+      { lifts:[], warmup:'',
+        extras:['어시스트친업 3세트 최대렙', '시티드체스트프레스 3세트·10회'],
+        acc:['천국의계단 10분'] },
     ],
     lower:[
-      {lifts:[],extras:['시티드레그프레스  4×12','라잉레그컬  3×12'],   acc:['힙어덕션 3×15','천국의계단 15분']},
-      {lifts:[],extras:['레그프레스  4×10  (무겁게)','라잉레그컬  4×10'],acc:['힙어덕션 3×20','바이크 10분']},
+      { lifts:[], warmup:'',
+        extras:['레그프레스 3세트·12회', '라잉레그컬 3세트·12회'],
+        acc:['힙어덕션 2세트·15회'] },
+      { lifts:[], warmup:'',
+        extras:['레그프레스 4세트·10회 (무겁게)', '라잉레그컬 3세트·10회'],
+        acc:['힙어덕션 2세트·20회'] },
     ],
-    full:[['렛풀다운 3×10','레그프레스 3×12','천국의계단 10분']],
-    cardio:[['천국의계단 20분','일립티컬 15분'],['바이크 15분','천국의계단 15분']],
+    full:[['렛풀다운 3세트·10회', '레그프레스 3세트·12회']],
+    cardio:[['천국의계단 20분', '일립티컬 10분'],['바이크 15분', '천국의계단 10분']],
   },
 }
 
@@ -105,7 +131,7 @@ const PROGRAMS={
 const DOW_SUGGEST={1:'lower',2:'full',3:'cardio',4:'full',5:'upper',6:null,0:null};
 
 // ── 상태 ───────────────────────────────────────────────
-let S={sel:td(),logs:{},panel:null,sg:null,en:'',sts:'',wgt:'',cf:{},showSetup:false};
+let S={sel:td(),logs:{},panel:null,sg:null,en:'',st:'',rp:'',wgt:'',cf:{},showSetup:false};
 try{const v=localStorage.getItem(SK);if(v){const p=JSON.parse(v);S.logs=p.logs||{};S.lifts=p.lifts||JSON.parse(JSON.stringify(DEF_LIFTS));}}catch(e){}
 if(!S.lifts)S.lifts=JSON.parse(JSON.stringify(DEF_LIFTS));
 const sv=()=>{try{localStorage.setItem(SK,JSON.stringify({logs:S.logs,lifts:S.lifts}))}catch(e){}}
@@ -217,11 +243,16 @@ function stBtn(type,lb,col,cur){return`<button onclick="setSessType('${type}')" 
 function exRow(ex){
   const dot=(MC[ex.mg]||{}).dot||'#999',lb=(MC[ex.mg]||{}).lb||ex.mg;
   const detail=ex.cardio?cardioSummary(ex.name,ex.cardio):[ex.sets,ex.wgt].filter(Boolean).join(' · ');
-  return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:.5px solid var(--b)">
-    <div style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0"></div>
-    <div style="flex:1;min-width:0"><span style="font-size:14px;font-weight:500">${esc(ex.name)}</span>${detail?`<span style="font-size:12px;color:var(--muted);margin-left:6px">${esc(detail)}</span>`:''}</div>
-    <span style="font-size:11px;padding:2px 7px;border-radius:6px;border:.5px solid ${dot}55;color:${dot};background:${dot}18;font-weight:500;flex-shrink:0">${lb}</span>
-    <button onclick="del('${ex.id}')" style="font-size:16px;color:var(--muted);background:transparent;border:none;line-height:1;padding:0 2px;flex-shrink:0">×</button>
+  const FEELS=[['light','😌 가벼워','#378ADD'],['ok','👍 딱 좋았어','#4F9A2A'],['heavy','😤 무거웠어','#C4476A']];
+  const feelBtns=FEELS.map(([f,e,c])=>`<button onclick="setFeel('${ex.id}','${f}')" style="padding:2px 7px;font-size:11px;border-radius:10px;border:.5px solid ${ex.feel===f?c:'var(--b2)'};background:${ex.feel===f?c+'22':'transparent'};color:${ex.feel===f?c:'var(--muted)'}">${e}</button>`).join('');
+  return`<div style="padding:7px 0;border-top:.5px solid var(--b)">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0"><span style="font-size:14px;font-weight:500">${esc(ex.name)}</span>${detail?`<span style="font-size:12px;color:var(--muted);margin-left:6px">${esc(detail)}</span>`:''}</div>
+      <span style="font-size:11px;padding:2px 7px;border-radius:6px;border:.5px solid ${dot}55;color:${dot};background:${dot}18;font-weight:500;flex-shrink:0">${lb}</span>
+      <button onclick="del('${ex.id}')" style="font-size:16px;color:var(--muted);background:transparent;border:none;line-height:1;padding:0 2px;flex-shrink:0">×</button>
+    </div>
+    <div style="display:flex;gap:5px;margin-top:5px;padding-left:15px">${feelBtns}</div>
   </div>`;
 }
 function cardioPanel(exName){
@@ -256,7 +287,8 @@ function render(){
   // 처방 카드
   let prescHtml='';
   if(gymChecked&&prog&&(prog.type==='upper'||prog.type==='lower')){
-    const liftRows=(prog.lifts||[]).map(k=>{
+    const warmupHtml=prog&&prog.warmup?`<div style="font-size:12px;color:var(--muted);padding:6px 0;border-bottom:.5px solid var(--b);margin-bottom:6px">🔥 워밍업: ${esc(prog.warmup)}</div>`:'';
+    const liftRows=(prog&&prog.lifts||[]).map(k=>{
       const l=S.lifts[k];if(!l)return'';
       const sch=liftScheme(l);
       const wgt=sch.deload?r2(l.wgt*0.7,l.step):l.wgt;
@@ -277,7 +309,7 @@ function render(){
     prescHtml=`
       <div class="lbl">오늘의 처방 — ${prog.type==='upper'?'상체':'하체'}</div>
       <div class="card">
-        ${liftRows||'<div style="font-size:13px;color:var(--muted);margin-bottom:6px">이 루틴은 고정 중량 없이 진행해요</div>'}
+        ${warmupHtml}${liftRows||'<div style="font-size:13px;color:var(--muted);margin-bottom:6px">이 루틴은 고정 중량 없이 진행해요</div>'}
         ${extraRows}
         ${accRows?`<div style="margin-top:8px;padding-top:8px;border-top:.5px solid var(--b);font-size:11px;color:var(--muted);margin-bottom:5px">마무리 보조</div>${accRows}`:''}
         <div style="font-size:11px;color:var(--muted);margin-top:8px">완료 체크 종목만 세션 평가에 반영 · ±로 중량 수동 조절</div>
@@ -308,7 +340,11 @@ function render(){
     const gbs=Object.keys(EDB).map(g=>{const dot=(MC[g]||{}).dot||'#999',iS=S.sg===g;return`<button onclick="sg('${g}')" style="padding:9px 6px;font-size:12px;font-weight:500;border:.5px solid ${iS?dot:'var(--b2)'};background:${iS?dot+'20':'transparent'};color:${iS?dot:'var(--muted)'};border-radius:8px;width:100%">${(MC[g]||{}).lb||g}</button>`;}).join('');
     const ebs=S.sg?EDB[S.sg].map(ex=>{const dot=(MC[S.sg]||{}).dot||'#999',iS=S.en===ex;return`<button onclick="se(this.dataset.n)" data-n="${esc(ex)}" style="padding:6px 12px;font-size:13px;border-radius:20px;border:.5px solid ${iS?dot:'var(--b2)'};background:${iS?dot+'20':'transparent'};color:${iS?dot:'var(--text)'}">${esc(ex)}</button>`;}).join(''):'';
     const isCardio=S.sg==='카디오',hasCardioFields=isCardio&&S.en&&CF[S.en];
-    const inputFields=hasCardioFields?`<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">유산소 기록</div>${cardioPanel(S.en)}`:`<div style="display:flex;gap:6px;margin-bottom:8px"><input id="_sts" placeholder="세트×렙 (예: 3×10)" value="${esc(S.sts)}" oninput="S.sts=this.value" style="flex:1"><input id="_wgt" placeholder="중량 (예: 40kg)" value="${esc(S.wgt)}" oninput="S.wgt=this.value" style="flex:1"></div>`;
+    const inputFields=hasCardioFields?`<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">유산소 기록</div>${cardioPanel(S.en)}`:`<div style="display:flex;gap:6px;margin-bottom:8px">
+          <div style="flex:1"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">세트</div><input id="_st" placeholder="예: 3" value="${esc(S.st)}" oninput="S.st=this.value" inputmode="numeric"></div>
+          <div style="flex:1"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">렙 / 회</div><input id="_rp" placeholder="예: 10" value="${esc(S.rp)}" oninput="S.rp=this.value" inputmode="numeric"></div>
+          <div style="flex:1.2"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">중량</div><input id="_wgt" placeholder="예: 40kg" value="${esc(S.wgt)}" oninput="S.wgt=this.value"></div>
+        </div>`;
     pnl=`<div class="card" style="background:var(--bg);margin-bottom:12px">
       <div style="font-size:14px;font-weight:600;margin-bottom:10px">${S.panel==='morn'?'오전':'오후·저녁'} 운동 추가</div>
       <div style="display:flex;gap:5px;margin-bottom:12px">${st}</div>
@@ -357,7 +393,7 @@ function render(){
           </div>
           <div style="margin-bottom:8px">
             <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Firebase Config (JSON)</div>
-            <textarea id="fb_cfg" rows="5" placeholder='{"apiKey":"...","databaseURL":"..."}' oninput="try{FB.cfg=JSON.parse(this.value)}catch(e){}" style="width:100%;background:var(--bg);border:.5px solid var(--b2);border-radius:8px;color:var(--text);padding:9px;font-size:12px;font-family:monospace;resize:none;outline:none">${esc(FB.cfg?JSON.stringify(FB.cfg,null,2):'')}</textarea>
+            <textarea id="fb_cfg" rows="5" placeholder='{"apiKey":"...","databaseURL":"..."}' oninput="try{FB.cfg=JSON.parse(this.value)}catch(e){try{FB.cfg=Function('return('+this.value+')')()}catch(e2){}}" style="width:100%;background:var(--bg);border:.5px solid var(--b2);border-radius:8px;color:var(--text);padding:9px;font-size:12px;font-family:monospace;resize:none;outline:none">${esc(FB.cfg?JSON.stringify(FB.cfg,null,2):'')}</textarea>
           </div>
           <div style="margin-bottom:12px">
             <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">나만의 PIN (4자리 이상)</div>
@@ -419,22 +455,26 @@ function render(){
 }
 
 // ── 액션 ──────────────────────────────────────────────
-function go(d){S.sel=d;S.panel=null;S.sg=null;S.en='';S.sts='';S.wgt='';S.cf={};render()}
+function go(d){S.sel=d;S.panel=null;S.sg=null;S.en='';S.st='';S.rp='';S.wgt='';S.cf={};render()}
 function pw(){const w=gw(S.sel);go(ad(w[0],-7))}
 function nw(){const w=gw(S.sel);go(ad(w[0],7))}
 function tog(k){const d=gd(S.sel),c=d[k],n=c===true?false:c===false?null:true;const nd={...d,[k]:n};if(k==='mnp'&&n===true)nd.apt=null;if(k==='apt'&&n===true)nd.mnp=null;S.logs={...S.logs,[S.sel]:nd};sv();render();}
-function op(s){S.panel=S.panel===s?null:s;if(S.panel){S.sg=null;S.en='';S.sts='';S.wgt='';S.cf={};}render()}
+function op(s){S.panel=S.panel===s?null:s;if(S.panel){S.sg=null;S.en='';S.st='';S.rp='';S.wgt='';S.cf={};}render()}
 function sp(s){S.panel=s;render()}
 function sg(g){S.sg=g;S.en='';S.cf={};render()}
 function se(n){S.en=n;S.cf={};render()}
 function save(){
   const nm=S.en.trim();if(!nm)return;
   const isCardio=S.sg==='카디오',hasC=isCardio&&S.en&&CF[S.en];
-  const e={id:Date.now().toString(),name:nm,mg:S.sg||'카디오',sess:S.panel,...(hasC?{cardio:{...S.cf}}:{sets:S.sts.trim(),wgt:S.wgt.trim()})};
+  const e={id:Date.now().toString(),name:nm,mg:S.sg||'카디오',sess:S.panel,...(hasC?{cardio:{...S.cf}}:{sets:S.st&&S.rp?`${S.st}×${S.rp}`:S.st?`${S.st}세트`:S.rp?`${S.rp}렙`:'',wgt:S.wgt.trim()})};
   const d=gd(S.sel);S.logs={...S.logs,[S.sel]:{...d,exs:[...(d.exs||[]),e]}};
-  S.panel=null;S.sg=null;S.en='';S.sts='';S.wgt='';S.cf={};sv();render();
+  S.panel=null;S.sg=null;S.en='';S.st='';S.rp='';S.wgt='';S.cf={};sv();render();
 }
 function del(id){const d=gd(S.sel);S.logs={...S.logs,[S.sel]:{...d,exs:(d.exs||[]).filter(e=>e.id!==id)}};svAndPush();render()}
+function setFeel(id,feel){
+  const d=gd(S.sel),exs=(d.exs||[]).map(e=>e.id===id?{...e,feel:e.feel===feel?null:feel}:e);
+  S.logs={...S.logs,[S.sel]:{...d,exs}};svAndPush();render();
+}
 function rate(r){rateSession(r)}
 function adjLift(k,dir){const l=S.lifts[k];if(!l)return;l.wgt=Math.max(l.step,r2(l.wgt+l.step*dir,l.step));sv();render()}
 function openSetup(){S.showSetup=true;render()}
