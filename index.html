@@ -40,11 +40,18 @@ const MC={'카디오':{dot:'#378ADD',lb:'카디오'},'하체':{dot:'#4F9A2A',lb:
 const CF={'러닝':[{id:'dist',lb:'거리',unit:'km',ph:'5.2'},{id:'pace',lb:'페이스',unit:'/km',ph:'5:30'},{id:'time',lb:'총 시간',unit:'',ph:'32:00'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'수영':[{id:'dist',lb:'거리',unit:'m',ph:'1000'},{id:'time',lb:'시간',unit:'',ph:'35:00'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'수영(개인)':[{id:'dist',lb:'거리',unit:'m',ph:'1000'},{id:'time',lb:'시간',unit:'',ph:'35:00'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'천국의계단':[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'level',lb:'레벨',unit:'',ph:'8'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'일립티컬':[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'level',lb:'레벨',unit:'',ph:'10'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'바이크':[{id:'time',lb:'시간',unit:'분',ph:'20'},{id:'dist',lb:'거리',unit:'km',ph:'선택'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'로잉머신':[{id:'dist',lb:'거리',unit:'m',ph:'2000'},{id:'time',lb:'총 시간',unit:'',ph:'7:45'},{id:'split',lb:'500m 스플릿',unit:'/500m',ph:'1:58'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'스키머신':[{id:'time',lb:'시간',unit:'분',ph:'10'},{id:'dist',lb:'거리',unit:'m',ph:'2000'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'무동력트레드밀':[{id:'time',lb:'시간',unit:'분',ph:'15'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}],'무동력자전거':[{id:'time',lb:'시간',unit:'분',ph:'10'},{id:'hr',lb:'심박수',unit:'bpm',ph:'선택'}]};
 function cardioSummary(name,c){if(!c||!Object.keys(c).some(k=>c[k]))return'';const flds=CF[name]||[{id:'time',lb:'시간',unit:'분'}];return flds.map(f=>{const v=c[f.id];if(!v||!v.trim())return null;if(f.id==='hr')return'♥'+v+'bpm';if(f.id==='level')return'Lv.'+v;return v+(f.unit||'');}).filter(Boolean).join(' · ');}
 
-const EDB={'카디오':['러닝','수영','수영(개인)','천국의계단','일립티컬','바이크','로잉머신','스키머신','무동력트레드밀','무동력자전거'],'하체':['바벨스쿼트','데드리프트','루마니안데드리프트','불가리안스플릿스쿼트','힙쓰러스트','레그프레스','라잉레그컬','힙어덕션','고블렛스쿼트','런지'],'상체푸시':['벤치프레스','인클라인프레스','오버헤드프레스','숄더프레스','푸시업','딥스','체스트프레스'],'상체풀':['렛풀다운','벤트오버로우','친업','어시스트친업','롱풀','덤벨로우','리어델트플라이','페이스풀','케틀벨헤일로'],'코어':['중량싯업','행잉레그레이즈','플랭크','케이블우드찹','사이드플랭크','케틀벨스윙','터키시겟업'],'그룹PT':['그룹PT']};
+const EDB={'카디오':['러닝','수영','수영(개인)','천국의계단','일립티컬','바이크','로잉머신','스키머신','무동력트레드밀','무동력자전거'],'하체':['바벨스쿼트','데드리프트','루마니안데드리프트','불가리안스플릿스쿼트','힙쓰러스트','레그프레스','라잉레그컬','힙어덕션','고블렛스쿼트','런지'],'상체푸시':['벤치프레스','인클라인프레스','오버헤드프레스','숄더프레스','푸시업','체스트프레스'],'상체풀':['렛풀다운','벤트오버로우','친업','어시스트친업','롱풀','덤벨로우','리어델트플라이','페이스풀','케틀벨헤일로'],'코어':['중량싯업','행잉레그레이즈','플랭크','케이블우드찹','사이드플랭크','케틀벨스윙','터키시겟업'],'그룹PT':['그룹PT']};
 
 // ── 주기화 스킴 ─────────────────────────────────────────
-const SCHEMES=[{s:5,r:5,lb:'5×5',tag:'근력',col:'#C4476A'},{s:4,r:6,lb:'4×6',tag:'근력-비대',col:'#7268CC'},{s:3,r:8,lb:'3×8',tag:'근비대',col:'#4F9A2A'},{s:3,r:5,lb:'3×5',tag:'디로드',col:'#B5830A',deload:true}];
-function liftScheme(l){const b=Math.floor(l.sess/3)%4;return SCHEMES[b===3?3:b];}
+const SCHEMES=[
+  {s:5,r:5, lb:'5×5',  tag:'근력',         col:'#C4476A'},        // 0
+  {s:4,r:8, lb:'4×8',  tag:'근비대',        col:'#4F9A2A'},        // 1
+  {s:3,r:10,lb:'3×10', tag:'볼륨',          col:'#378ADD'},        // 2
+  {s:5,r:3, lb:'5×3',  tag:'고강도 저반복', col:'#B5830A'},        // 3
+  {s:3,r:5, lb:'3×5',  tag:'디로드',        col:'#6B7099',deload:true}, // 4
+];
+// 3세션마다 스킴 변경: 근력→근비대→볼륨→고강도→디로드→반복
+function liftScheme(l){return SCHEMES[Math.floor(l.sess/3)%5];}
 
 // ── 메인 리프트 (상체 / 하체 분리) ─────────────────────
 const DEF_LIFTS={
@@ -62,43 +69,44 @@ const DEF_LIFTS={
 // acc: 마무리 보조 (텍스트)
 const PROGRAMS={
   mnp:{
+    // 약 1시간 기준. 세트간 메인 2분, 보조 1분 휴식 기준
     upper:[
-      // A: 수평 Push+Pull — 벤치 + 바벨로우 + 풀업
+      // A: 수평 Push+Pull (약 55분)
       { lifts:['bench','row'],
-        warmup:'매달리기 1분',
-        extras:['풀업 — 최대렙 3세트'],
-        acc:[] },
-      // B: 수직 Push+Pull — OHP + 친업 + 딥스
+        warmup:'헤일로 8kg 8×2 · 매달리기 1분',
+        extras:['밴드 풀업 3세트·최대렙 (세트간 1.5분)', '덤벨숄더프레스 3×10'],
+        acc:['중량싯업 2×20'] },
+      // B: 수직 Push+Pull (약 55분)
       { lifts:['ohp'],
-        warmup:'매달리기 1분',
-        extras:['어시스트친업 — 최대렙 3세트', '딥스 — 최대렙 2세트'],
-        acc:[] },
-      // C: 볼륨 — 벤치 + 덤벨로우 + 시소프레스
+        warmup:'헤일로 8kg 8×2 · 매달리기 1분',
+        extras:['밴드 풀업 4세트·최대렙 (세트간 1.5분)', '덤벨로우 3×10 each', '시소프레스 3×20'],
+        acc:['중량싯업 50개'] },
+      // C: 볼륨 (약 55분)
       { lifts:['bench'],
-        warmup:'헤일로 8kg 8회×2',
-        extras:['덤벨로우 3세트·10회 each', '시소프레스 3세트·20회'],
+        warmup:'헤일로 8kg 8×2',
+        extras:['밴드 풀업 4세트·최대렙', '덤벨로우 3×10 each', '불가리안백스핀 3×10/측 (5kg)'],
         acc:[] },
     ],
     lower:[
-      // A: 스쿼트 중심 + 케틀벨 컨디셔닝
+      // A: 스쿼트 중심 (약 57분)
       { lifts:['squat'],
-        warmup:'헤일로 8kg 8회×2 → 고블렛스쿼트 16kg 10회×3',
-        extras:['스플릿스쿼트 4세트·10회 each (5kg 양손)'],
-        acc:['한손스윙 5분 100개 (16kg)', '중량싯업 100개'] },
-      // B: 데드 중심 + BSS
+        warmup:'헤일로 8kg 8×2 → 고블렛스쿼트 16kg 10×3',
+        extras:['스플릿스쿼트 4×10/측 (5kg 양손)', '루마니안데드리프트 3×8'],
+        acc:['한손스윙 5분 100개 (16kg)', '중량싯업 50개'] },
+      // B: 데드 중심 (약 58분)
       { lifts:['dl'],
-        warmup:'헤일로 8kg 8회×2 → 고블렛스쿼트 16kg 10회×3',
-        extras:['불가리안스플릿스쿼트 3세트·8회 each (10kg)'],
+        warmup:'헤일로 8kg 8×2 → 고블렛스쿼트 16kg 10×3',
+        extras:['불가리안스플릿스쿼트 3×10/측 (10kg)', '힙쓰러스트 3×12 (바벨)'],
         acc:['터키시겟업 10개 (12kg)'] },
-      // C: BSS 메인 + 루마니안데드 가볍게
+      // C: 볼륨·컨디셔닝 (약 55분)
       { lifts:['bss'],
-        warmup:'헤일로 8kg 8회×2 → 고블렛스쿼트 16kg 10회×3',
-        extras:['루마니안데드리프트 4세트·10회 (가볍게)'],
-        acc:['중량싯업 50개'] },
+        warmup:'헤일로 8kg 8×2 → 고블렛스쿼트 16kg 10×3',
+        extras:['루마니안데드리프트 4×10 (가볍게)', '스플릿스쿼트 3×8/측'],
+        acc:['한손스윙 5분 100개 (16kg)', '중량싯업 100개'] },
     ],
     full:[
-      ['그룹PT로 충분. 추가한다면 풀업 1가지만'],
-      ['그룹PT 이후 — 풀업 2세트 최대렙 + 중량싯업 50개'],
+      ['그룹PT로 충분. 추가한다면 밴드 풀업 또는 코어 하나만'],
+      ['그룹PT 이후: 밴드 풀업 2세트·최대렙 + 중량싯업 50개'],
     ],
     cardio:[
       ['케틀벨스윙 24kg — 10개×15세트 (유산소 루틴)'],
@@ -106,24 +114,29 @@ const PROGRAMS={
     ],
   },
   apt:{
+    // 약 1시간 기준
     upper:[
+      // A (약 60분)
       { lifts:[], warmup:'',
-        extras:['렛풀다운 3세트·10회', '시티드체스트프레스 3세트·10회'],
-        acc:['숄더프레스 2세트·12회'] },
-      { lifts:[], warmup:'',
-        extras:['어시스트친업 3세트 최대렙', '시티드체스트프레스 3세트·10회'],
+        extras:['렛풀다운 4×10', '어시스트친업 3세트·최대렙', '시티드체스트프레스 4×10', '숄더프레스 3×12', '리어델트플라이 3×15'],
         acc:['천국의계단 10분'] },
+      // B (약 60분)
+      { lifts:[], warmup:'',
+        extras:['어시스트친업 4세트·최대렙', '렛풀다운 3×12', '체스트프레스 3×12', '숄더프레스 3×10', '롱풀 3×12'],
+        acc:['일립티컬 10분'] },
     ],
     lower:[
+      // A (약 60분)
       { lifts:[], warmup:'',
-        extras:['레그프레스 3세트·12회', '라잉레그컬 3세트·12회'],
-        acc:['힙어덕션 2세트·15회'] },
+        extras:['레그프레스 4×12', '라잉레그컬 4×12', '힙어덕션 3×15', '레그익스텐션 3×12'],
+        acc:['천국의계단 15분'] },
+      // B (약 60분)
       { lifts:[], warmup:'',
-        extras:['레그프레스 4세트·10회 (무겁게)', '라잉레그컬 3세트·10회'],
-        acc:['힙어덕션 2세트·20회'] },
+        extras:['레그프레스 5×10 (무겁게)', '라잉레그컬 3×12', '힙어덕션 3×20', '레그익스텐션 3×15'],
+        acc:['바이크 10분'] },
     ],
-    full:[['렛풀다운 3세트·10회', '레그프레스 3세트·12회']],
-    cardio:[['천국의계단 20분', '일립티컬 10분'],['바이크 15분', '천국의계단 10분']],
+    full:[['렛풀다운 3×10', '레그프레스 3×12', '천국의계단 10분']],
+    cardio:[['천국의계단 20분', '일립티컬 10분'], ['바이크 15분', '천국의계단 15분']],
   },
 }
 
@@ -131,7 +144,7 @@ const PROGRAMS={
 const DOW_SUGGEST={1:'lower',2:'full',3:'cardio',4:'full',5:'upper',6:null,0:null};
 
 // ── 상태 ───────────────────────────────────────────────
-let S={sel:td(),logs:{},panel:null,sg:null,en:'',st:'',rp:'',wgt:'',cf:{},showSetup:false};
+let S={sel:td(),logs:{},panel:null,sg:null,en:'',st:'',rp:'',wgt:'',cf:{},showSetup:false,srch:''};
 try{const v=localStorage.getItem(SK);if(v){const p=JSON.parse(v);S.logs=p.logs||{};S.lifts=p.lifts||JSON.parse(JSON.stringify(DEF_LIFTS));}}catch(e){}
 if(!S.lifts)S.lifts=JSON.parse(JSON.stringify(DEF_LIFTS));
 const sv=()=>{try{localStorage.setItem(SK,JSON.stringify({logs:S.logs,lifts:S.lifts}))}catch(e){}}
@@ -187,7 +200,21 @@ async function cloudPush(){
 }
 
 const svAndPush=()=>{sv();cloudPush();};
-const gd=d=>S.logs[d]||{swim:null,mnp:null,apt:null,exs:[],rating:null,liftsDone:{},sessType:null};
+const gd=d=>S.logs[d]||{swim:null,mnp:null,apt:null,run:null,runLog:null,exs:[],rating:null,liftsDone:{},sessType:null};
+
+function getHistory(q){
+  if(!q||!q.trim())return[];
+  const lq=q.trim().toLowerCase();
+  const res=[];
+  Object.entries(S.logs).forEach(([date,day])=>{
+    (day.exs||[]).forEach(ex=>{
+      if(ex.name.toLowerCase().includes(lq)){
+        res.push({date,name:ex.name,sets:ex.sets||'',wgt:ex.wgt||'',sess:ex.sess,mg:ex.mg,cardio:ex.cardio||null});
+      }
+    });
+  });
+  return res.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
+}
 
 // ── 프로그램 조회 ──────────────────────────────────────
 function getProgram(){
@@ -233,6 +260,7 @@ function setSessType(t){const day=gd(S.sel);S.logs={...S.logs,[S.sel]:{...day,se
 function dots(d){
   const dd=S.logs[d]||{},mg=[...new Set((dd.exs||[]).map(e=>e.mg))].map(g=>(MC[g]||{}).dot).filter(Boolean),ex=[];
   if(dd.swim===true)ex.push('#378ADD');if(dd.mnp===true)ex.push('#CC5A2E');if(dd.apt===true)ex.push('#4F9A2A');
+  if(dd.run===true)ex.push('#4F9A2A');
   return[...new Set([...ex,...mg])];
 }
 function pill(chk,key,lb,dot){
@@ -341,9 +369,9 @@ function render(){
     const ebs=S.sg?EDB[S.sg].map(ex=>{const dot=(MC[S.sg]||{}).dot||'#999',iS=S.en===ex;return`<button onclick="se(this.dataset.n)" data-n="${esc(ex)}" style="padding:6px 12px;font-size:13px;border-radius:20px;border:.5px solid ${iS?dot:'var(--b2)'};background:${iS?dot+'20':'transparent'};color:${iS?dot:'var(--text)'}">${esc(ex)}</button>`;}).join(''):'';
     const isCardio=S.sg==='카디오',hasCardioFields=isCardio&&S.en&&CF[S.en];
     const inputFields=hasCardioFields?`<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">유산소 기록</div>${cardioPanel(S.en)}`:`<div style="display:flex;gap:6px;margin-bottom:8px">
+          <div style="flex:1"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">횟수 (렙)</div><input id="_rp" placeholder="예: 10" value="${esc(S.rp)}" oninput="S.rp=this.value" inputmode="numeric"></div>
           <div style="flex:1"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">세트</div><input id="_st" placeholder="예: 3" value="${esc(S.st)}" oninput="S.st=this.value" inputmode="numeric"></div>
-          <div style="flex:1"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">렙 / 회</div><input id="_rp" placeholder="예: 10" value="${esc(S.rp)}" oninput="S.rp=this.value" inputmode="numeric"></div>
-          <div style="flex:1.2"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">중량</div><input id="_wgt" placeholder="예: 40kg" value="${esc(S.wgt)}" oninput="S.wgt=this.value"></div>
+          <div style="flex:1"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">중량 (kg)</div><input id="_wgt" placeholder="예: 40" value="${esc(S.wgt)}" oninput="S.wgt=this.value" inputmode="decimal"></div>
         </div>`;
     pnl=`<div class="card" style="background:var(--bg);margin-bottom:12px">
       <div style="font-size:14px;font-weight:600;margin-bottom:10px">${S.panel==='morn'?'오전':'오후·저녁'} 운동 추가</div>
@@ -428,9 +456,34 @@ function render(){
       <button onclick="nw()" style="background:transparent;border:none;padding:0 8px;color:var(--muted);font-size:22px">›</button>
     </div>
     <div style="padding:.75rem .875rem 0">
-      <div class="lbl" style="margin-top:0">스케줄 체크</div>
+      <div class="lbl" style="margin-top:0">운동 기록 검색</div>
+      <div class="card" style="margin-bottom:12px">
+        <input placeholder="운동 이름 검색... (예: 스쿼트, 케틀벨스윙)" value="${esc(S.srch)}" oninput="S.srch=this.value;render()" style="margin-bottom:${S.srch?8:0}px">
+        ${(()=>{
+          const hist=getHistory(S.srch);
+          if(!S.srch)return'';
+          if(!hist.length)return'<div style="font-size:13px;color:var(--muted);text-align:center;padding:4px 0">기록 없음</div>';
+          return hist.map(h=>{
+            const dot=(MC[h.mg]||{}).dot||'#999';
+            const detail=h.cardio?cardioSummary(h.name,h.cardio):[h.sets,h.wgt].filter(Boolean).join(' · ');
+            const dateF=h.date.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1.$2.$3');
+            return`<div onclick="go('${h.date}')" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:.5px solid var(--b);cursor:pointer">
+              <div style="width:6px;height:6px;border-radius:50%;background:${dot};flex-shrink:0"></div>
+              <div style="flex:1;min-width:0">
+                <span style="font-size:13px;font-weight:500">${esc(h.name)}</span>
+                ${detail?`<span style="font-size:12px;color:var(--muted);margin-left:6px">${esc(detail)}</span>`:''}
+              </div>
+              <span style="font-size:11px;color:var(--muted);flex-shrink:0">${dateF} ${h.sess==='morn'?'오전':'오후'}</span>
+            </div>`;
+          }).join('');
+        })()}
+      </div>
+      <div class="lbl">스케줄 체크</div>
       <div class="card" style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap">${pill(day.swim,'swim','수영 강습','#378ADD')}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${pill(day.swim,'swim','수영 강습','#378ADD')}
+          ${pill(day.run,'run','야외러닝 🏃','#4F9A2A')}
+        </div>
         <div style="border-top:.5px solid var(--b);padding-top:8px">
           <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">운동 장소</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">${pill(day.mnp,'mnp','무브앤플레이','#CC5A2E')}${pill(day.apt,'apt','아파트 헬스장','#4F9A2A')}</div>
@@ -446,6 +499,27 @@ function render(){
         </div>`:''}
       </div>
       ${prescHtml}
+      ${day.run===true?`
+      <div class="lbl">야외러닝 기록</div>
+      <div class="card" style="margin-bottom:8px">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <div style="flex:1"><div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px">거리 (km)</div>
+            <input id="r_dist" placeholder="예: 5.2" value="${esc((day.runLog||{}).dist||'')}" oninput="saveRun()" inputmode="decimal"></div>
+          <div style="flex:1"><div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px">페이스 (/km)</div>
+            <input id="r_pace" placeholder="예: 5:30" value="${esc((day.runLog||{}).pace||'')}" oninput="saveRun()"></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <div style="flex:1"><div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px">총 시간</div>
+            <input id="r_time" placeholder="예: 32:00" value="${esc((day.runLog||{}).time||'')}" oninput="saveRun()"></div>
+          <div style="flex:1"><div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px">심박수 (선택)</div>
+            <input id="r_hr" placeholder="예: 155" value="${esc((day.runLog||{}).hr||'')}" oninput="saveRun()" inputmode="numeric"></div>
+        </div>
+        <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:6px">체감 강도</div>
+        <div style="display:flex;gap:5px">
+          ${[['easy','😌 가벼웠어','#4F9A2A'],['ok','💪 적당했어','#7268CC'],['hard','😰 힘들었어','#B5830A'],['max','🔥 한계였어','#C4476A']].map(([r,lb,col])=>`
+          <button onclick="setRunRpe('${r}')" style="flex:1;padding:7px 3px;font-size:11px;font-weight:600;border-radius:8px;border:.5px solid ${(day.runLog||{}).rpe===r?col:'var(--b2)'};background:${(day.runLog||{}).rpe===r?col+'22':'transparent'};color:${(day.runLog||{}).rpe===r?col:'var(--text)'}">${lb}</button>`).join('')}
+        </div>
+      </div>`:''}
       <div class="lbl">운동 기록</div>
       ${sess('morn','오전',morn)}
       ${sess('eve','오후·저녁',eve)}
@@ -458,7 +532,17 @@ function render(){
 function go(d){S.sel=d;S.panel=null;S.sg=null;S.en='';S.st='';S.rp='';S.wgt='';S.cf={};render()}
 function pw(){const w=gw(S.sel);go(ad(w[0],-7))}
 function nw(){const w=gw(S.sel);go(ad(w[0],7))}
-function tog(k){const d=gd(S.sel),c=d[k],n=c===true?false:c===false?null:true;const nd={...d,[k]:n};if(k==='mnp'&&n===true)nd.apt=null;if(k==='apt'&&n===true)nd.mnp=null;S.logs={...S.logs,[S.sel]:nd};sv();render();}
+function tog(k){const d=gd(S.sel),cur=d[k],n=cur===true?false:cur===false?null:true;const nd={...d,[k]:n};if(k==='mnp'&&n===true)nd.apt=null;if(k==='apt'&&n===true)nd.mnp=null;S.logs={...S.logs,[S.sel]:nd};sv();render();}
+function saveRun(){
+  const d=gd(S.sel);
+  const rl={dist:document.getElementById('r_dist')?.value||'',
+             pace:document.getElementById('r_pace')?.value||'',
+             time:document.getElementById('r_time')?.value||'',
+             hr:  document.getElementById('r_hr')?.value||'',
+             rpe: d.runLog?.rpe||null};
+  S.logs={...S.logs,[S.sel]:{...d,runLog:rl}};svAndPush();render();
+}
+function setRunRpe(rpe){const d=gd(S.sel);S.logs={...S.logs,[S.sel]:{...d,runLog:{...(d.runLog||{}),rpe}}};svAndPush();render();}
 function op(s){S.panel=S.panel===s?null:s;if(S.panel){S.sg=null;S.en='';S.st='';S.rp='';S.wgt='';S.cf={};}render()}
 function sp(s){S.panel=s;render()}
 function sg(g){S.sg=g;S.en='';S.cf={};render()}
@@ -466,7 +550,7 @@ function se(n){S.en=n;S.cf={};render()}
 function save(){
   const nm=S.en.trim();if(!nm)return;
   const isCardio=S.sg==='카디오',hasC=isCardio&&S.en&&CF[S.en];
-  const e={id:Date.now().toString(),name:nm,mg:S.sg||'카디오',sess:S.panel,...(hasC?{cardio:{...S.cf}}:{sets:S.st&&S.rp?`${S.st}×${S.rp}`:S.st?`${S.st}세트`:S.rp?`${S.rp}렙`:'',wgt:S.wgt.trim()})};
+  const e={id:Date.now().toString(),name:nm,mg:S.sg||'카디오',sess:S.panel,...(hasC?{cardio:{...S.cf}}:{sets:S.rp&&S.st?`${S.rp}×${S.st}`:S.rp?`${S.rp}렙`:S.st?`${S.st}세트`:'',wgt:S.wgt.trim()?(S.wgt.trim().replace(/[kKkK]+$/,'')||S.wgt.trim())+'kg':''})};
   const d=gd(S.sel);S.logs={...S.logs,[S.sel]:{...d,exs:[...(d.exs||[]),e]}};
   S.panel=null;S.sg=null;S.en='';S.st='';S.rp='';S.wgt='';S.cf={};sv();render();
 }
