@@ -460,7 +460,12 @@ function render(){
             <button onclick="_db=null;svFB();cloudPull()" style="flex:1;padding:10px;border:.5px solid #4F9A2A;background:#4F9A2A22;color:#4F9A2A;font-size:13px;font-weight:600">저장 + 다운로드</button>
           </div>
         </div>
-        <button onclick="closeSetup()" style="width:100%;padding:13px;border-radius:10px;background:#7268CC;color:#fff;font-size:15px;font-weight:700;border:none;margin-top:16px">닫기</button>
+        <div style="margin-top:16px;padding-top:16px;border-top:.5px solid var(--b)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px">데이터 내보내기</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px">나중에 새 기능 추가할 때 이 파일을 Claude에게 첨부하면 돼요</div>
+          <button onclick="exportData()" style="width:100%;padding:11px;border-radius:10px;background:transparent;color:#378ADD;font-size:14px;font-weight:600;border:.5px solid #378ADD">⬇ 운동 데이터 JSON 다운로드</button>
+        </div>
+        <button onclick="closeSetup()" style="width:100%;padding:13px;border-radius:10px;background:#7268CC;color:#fff;font-size:15px;font-weight:700;border:none;margin-top:12px">닫기</button>
       </div>
     </div>`:'';
 
@@ -605,6 +610,14 @@ function setFeel(id,feel){
 }
 function rate(r){rateSession(r)}
 function adjLift(k,dir){const l=S.lifts[k];if(!l)return;l.wgt=Math.max(l.step,r2(l.wgt+l.step*dir,l.step));sv();render()}
+function exportData(){
+  const data={logs:S.logs,lifts:S.lifts,exported:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='workout_data_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
 function openSetup(){S.showSetup=true;render()}
 function closeSetup(){S.showSetup=false;render()}
 
