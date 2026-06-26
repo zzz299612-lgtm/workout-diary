@@ -202,6 +202,29 @@ async function cloudPush(){
 const svAndPush=()=>{sv();cloudPush();};
 const gd=d=>S.logs[d]||{swim:null,mnp:null,apt:null,run:null,runLog:null,exs:[],rating:null,liftsDone:{},sessType:null};
 
+function renderSearchResults(){
+  const hist=getHistory(S.srch);
+  if(!S.srch)return'';
+  if(!hist.length)return'<div style="font-size:13px;color:var(--muted);text-align:center;padding:4px 0">기록 없음</div>';
+  return hist.map(h=>{
+    const dot=(MC[h.mg]||{}).dot||'#999';
+    const detail=h.cardio?cardioSummary(h.name,h.cardio):[h.sets,h.wgt].filter(Boolean).join(' · ');
+    const dateF=h.date.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1.$2.$3');
+    return`<div onclick="go('${h.date}')" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:.5px solid var(--b);cursor:pointer">
+      <div style="width:6px;height:6px;border-radius:50%;background:${dot};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <span style="font-size:13px;font-weight:500">${esc(h.name)}</span>
+        ${detail?`<span style="font-size:12px;color:var(--muted);margin-left:6px">${esc(detail)}</span>`:''}
+      </div>
+      <span style="font-size:11px;color:var(--muted);flex-shrink:0">${dateF} ${h.sess==='morn'?'오전':'오후'}</span>
+    </div>`;
+  }).join('');
+}
+function onSrch(el){
+  S.srch=el.value;
+  const r=document.getElementById('srch_results');
+  if(r)r.innerHTML=renderSearchResults();
+}
 function getHistory(q){
   if(!q||!q.trim())return[];
   const lq=q.trim().toLowerCase();
@@ -458,25 +481,8 @@ function render(){
     <div style="padding:.75rem .875rem 0">
       <div class="lbl" style="margin-top:0">운동 기록 검색</div>
       <div class="card" style="margin-bottom:12px">
-        <input placeholder="운동 이름 검색... (예: 스쿼트, 케틀벨스윙)" value="${esc(S.srch)}" oninput="S.srch=this.value;render()" style="margin-bottom:${S.srch?8:0}px">
-        ${(()=>{
-          const hist=getHistory(S.srch);
-          if(!S.srch)return'';
-          if(!hist.length)return'<div style="font-size:13px;color:var(--muted);text-align:center;padding:4px 0">기록 없음</div>';
-          return hist.map(h=>{
-            const dot=(MC[h.mg]||{}).dot||'#999';
-            const detail=h.cardio?cardioSummary(h.name,h.cardio):[h.sets,h.wgt].filter(Boolean).join(' · ');
-            const dateF=h.date.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1.$2.$3');
-            return`<div onclick="go('${h.date}')" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:.5px solid var(--b);cursor:pointer">
-              <div style="width:6px;height:6px;border-radius:50%;background:${dot};flex-shrink:0"></div>
-              <div style="flex:1;min-width:0">
-                <span style="font-size:13px;font-weight:500">${esc(h.name)}</span>
-                ${detail?`<span style="font-size:12px;color:var(--muted);margin-left:6px">${esc(detail)}</span>`:''}
-              </div>
-              <span style="font-size:11px;color:var(--muted);flex-shrink:0">${dateF} ${h.sess==='morn'?'오전':'오후'}</span>
-            </div>`;
-          }).join('');
-        })()}
+        <input id="srch_input" placeholder="운동 이름 검색... (예: 스쿼트, 케틀벨스윙)" value="${esc(S.srch)}" oninput="onSrch(this)">
+        <div id="srch_results" style="margin-top:${S.srch?8:0}px">${renderSearchResults()}</div>
       </div>
       <div class="lbl">스케줄 체크</div>
       <div class="card" style="display:flex;flex-direction:column;gap:8px">
