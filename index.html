@@ -220,10 +220,14 @@ function renderSearchResults(){
     </div>`;
   }).join('');
 }
+let _srchTimer=null;
 function onSrch(el){
   S.srch=el.value;
-  const r=document.getElementById('srch_results');
-  if(r)r.innerHTML=renderSearchResults();
+  clearTimeout(_srchTimer);
+  _srchTimer=setTimeout(()=>{
+    const r=document.getElementById('srch_results');
+    if(r)r.innerHTML=renderSearchResults();
+  },350);
 }
 function getHistory(q){
   if(!q||!q.trim())return[];
